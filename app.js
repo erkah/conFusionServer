@@ -6,6 +6,9 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var session = require('express-session');
 var FileStore = require('session-file-store')(session);
+var passport = require('passport');
+var authenticate = require('./authenticate');
+var config = require('./config');
 
 var index = require('./routes/index');
 var users = require('./routes/users');
@@ -23,8 +26,10 @@ const connect = mongoose.connect(url, {
     useMongoClient: true
 });
 
+const url = config.mongoUrl;
+
 connect.then((db) => {
-    console.log('Conected correctly to server');
+    console.log('Connected correctlly to server');
 }, (err) => { console.log(err); })
 
 var app = express();
@@ -48,25 +53,22 @@ app.use(session({
     store: new FileStore()
 }));
 
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.use('/', index);
 app.use('/users', users);
 
 function auth(req, res, next) {
     console.log(req.session);
 
-    if (!req.session.user) {
+    if (!req.user) {
         var err = new Error('You are not authenticated!');
         res.setHeader('WWW-Authenticate', 'Basic');
         err.status = 403;
         return next(err);
     } else {
-        if (req.session.user === 'authenticated') {
-            next();
-        } else {
-            var err = new Error('You are not authenticated!');
-            err.status = 403;
-            return next(err);
-        }
+        next();
     }
 }
 app.use(auth);
